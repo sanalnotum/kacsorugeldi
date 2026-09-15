@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YKS Soru Dağılımı - Yıldıray Hoca</title>
+    
+    <!-- PWA / Mobil Uygulama Ayarları -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="YKS Analiz">
+    <meta name="theme-color" content="#f8fafc">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js (via CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: #f8fafc; 
+            color: #334155; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Smooth UI Elements */
+        .glass-card { 
+            background: #ffffff; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08); 
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        
+        .brand-text { 
+            background: linear-gradient(135deg, #4f46e5, #9333ea); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            font-weight: 700; 
+        }
+
+        /* Modern Segmented Tabs (50/50 Mobile Friendly) */
+        .tab-container {
+            background-color: #f1f5f9;
+            border-radius: 16px;
+            padding: 4px;
+            display: flex;
+            width: 100%;
+        }
+        .tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 12px 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 12px;
+            color: #64748b;
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            background-color: #ffffff;
+            color: #4f46e5;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        /* Table Design */
+        .table-container { max-height: 65vh; overflow-y: auto; border-radius: 16px; }
+        table th { background-color: #f8fafc; position: sticky; top: 0; z-index: 10; font-weight: 600; }
+        .sticky-col { position: sticky; left: 0; z-index: 20; background: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.02); }
+
+        /* Chart & Stats */
+        .chart-container { position: relative; height: 320px; width: 100%; }
+        .stat-card {
+            border-radius: 16px;
+            padding: 20px;
+            transition: transform 0.2s ease;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        
+        /* Select Inputs */
+        /* Select Inputs */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 36px;
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 pb-24">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-6 mt-2">
+            <h1 class="text-2xl md:text-4xl font-bold mb-1">YKS <span class="brand-text">(TYT-AYT)</span> Analiz</h1>
+            <p class="text-slate-500 text-sm md:text-base font-medium">Yıldıray Hoca | 2018 - 2026</p>
+        </div>
+
+        <!-- Sticky Controls (Mobile Friendly) -->
+        <div class="sticky top-0 z-40 bg-[#f8fafc]/95 backdrop-blur-md pt-2 pb-4 -mx-3 px-3 md:mx-0 md:px-0 mb-4">
+            <div class="glass-card p-4 md:p-6">
+                <!-- Tabs (50/50 Split) -->
+                <div class="tab-container mb-5">
+                    <button onclick="switchTab('analiz')" id="tab-analiz" class="tab-btn active">📊 Grafik Analiz</button>
+                    <button onclick="switchTab('tablo')" id="tab-tablo" class="tab-btn">📋 Genel Tablo</button>
+                </div>
+
+                <!-- Selectors -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1 ml-1">Sınav</label>
+                        <select id="examSelect" onchange="onExamChange()" class="w-full bg-slate-50 border-none text-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner font-medium">
+                            <option value="TYT">TYT (Temel Yeterlilik)</option>
+                            <option value="AYT">AYT (Alan Yeterlilik)</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1 ml-1">Ders</label>
+                        <select id="subjectSelect" onchange="onSubjectChange()" class="w-full bg-slate-50 border-none text-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner font-medium">
+                        </select>
+                    </div>
+                    <div id="topicContainer" class="col-span-2 md:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1 ml-1">Konu</label>
+                        <select id="topicSelect" onchange="onTopicChange()" class="w-full bg-slate-50 border-none text-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner font-medium text-sm md:text-base">
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="glass-card p-4 md:p-8">
+            
+            <!-- Analiz Tab Content -->
+            <div id="analizContent" class="animate-fade-in">
+                <!-- Advanced Filters for Chart -->
+                <div class="flex flex-wrap gap-3 mb-6 bg-slate-50 p-3 rounded-2xl items-center justify-between border border-slate-100 data-ignore-pdf">
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <select id="startYear" onchange="renderChartAndCards()" class="flex-1 md:w-32 bg-white border border-slate-200 text-slate-600 text-sm rounded-lg p-2 outline-none focus:border-indigo-500">
+                            <option value="2018">2018'den</option>
+                            <option value="2019">2019'dan</option>
+                            <option value="2020">2020'den</option>
+                            <option value="2021">2021'den</option>
+                            <option value="2022">2022'den</option>
+                            <option value="2023">2023'ten</option>
+                            <option value="2024">2024'ten</option>
+                        </select>
+                        <select id="endYear" onchange="renderChartAndCards()" class="flex-1 md:w-32 bg-white border border-slate-200 text-slate-600 text-sm rounded-lg p-2 outline-none focus:border-indigo-500">
+                            <option value="2026" selected>2026'ya</option>
+                            <option value="2025">2025'e</option>
+                            <option value="2024">2024'e</option>
+                            <option value="2023">2023'e</option>
+                        </select>
+                    </div>
+                    <select id="chartType" onchange="renderChartAndCards()" class="w-full md:w-auto bg-white border border-slate-200 text-slate-600 text-sm rounded-lg p-2 outline-none focus:border-indigo-500 mt-2 md:mt-0">
+                        <option value="bar">📊 Sütun Grafik</option>
+                        <option value="line">📈 Çizgi Grafik</option>
+                        <option value="pie">🥧 Pasta Grafik</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="pdfExportArea">
+                    <!-- Chart -->
+                    <div class="lg:col-span-2 border border-slate-100 rounded-3xl p-4 md:p-6 bg-white shadow-sm">
+                        <h3 class="text-lg font-bold mb-6 text-center text-slate-700" id="chartTitle">Konu Grafiği</h3>
+                        <div class="chart-container">
+                            <canvas id="topicChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats / Cards -->
+                    <div class="flex flex-col gap-4">
+                        <div class="stat-card bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100">
+                            <h4 class="text-sm font-semibold text-indigo-600/80 mb-1">Seçili Aralık Toplam Soru</h4>
+                            <p class="text-4xl font-bold text-indigo-900" id="totalQuestions">0</p>
+                        </div>
+                        <div class="stat-card bg-gradient-to-br from-fuchsia-50 to-purple-50 border border-fuchsia-100">
+                            <h4 class="text-sm font-semibold text-fuchsia-600/80 mb-1">Yıllık Ortalama</h4>
+                            <p class="text-4xl font-bold text-fuchsia-900" id="avgQuestions">0</p>
+                        </div>
+                        <div class="stat-card bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100">
+                            <h4 class="text-sm font-semibold text-emerald-600/80 mb-1">En Çok Sorulan Yıl</h4>
+                            <p class="text-xl font-bold text-emerald-900 mt-2" id="maxYear">-</p>
+                        </div>
+                        
+                        <!-- PDF Download Button -->
+                        <button onclick="downloadPDF()" class="mt-auto group flex items-center justify-center gap-2 bg-slate-800 hover:bg-indigo-600 text-white font-semibold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 data-ignore-pdf">
+                            <svg class="w-5 h-5 group-hover:-translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Raporu PDF İndir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tablo Tab Content -->
+            <div id="tabloContent" class="hidden animate-fade-in">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h3 class="text-xl font-bold text-slate-800" id="tableTitle">Ders Adı</h3>
+                    <button onclick="downloadCSV()" class="w-full md:w-auto flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Tabloyu Cihaza Kaydet
+                    </button>
+                </div>
+                
+                <div class="table-container border border-slate-200 shadow-sm">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="text-slate-700">
+                            <tr id="tableHeadRow">
+                                <!-- Generated Dynamically -->
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-100">
+                            <!-- Generated Dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Data & Script -->
+    <script>
+        // Veritabanı aynı bırakıldı (kısaltılmadı)
+        const DB = {"TYT": {"MATEMAT\u0130K": [{"Konu": "Temel Kavramlar", "2018": 4, "2019": 4, "2020": 1, "2021": 3, "2022": 3, "2023": 2, "2024": 1, "2025": 3, "2026": 2}, {"Konu": "Say\u0131 Basamaklar\u0131", "2018": 1, "2019": 2, "2020": 1, "2021": 2, "2022": 1, "2023": 1, "2024": 2, "2025": 1, "2026": 2}, {"Konu": "B\u00f6l\u00fcnebilme Kurallar\u0131", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "OBEB-OKEK", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "Rasyonel Say\u0131lar", "2018": 0, "2019": 1, "2020": 3, "2021": 0, "2022": 2, "2023": 2, "2024": 2, "2025": 1, "2026": 2}, {"Konu": "Basit E\u015fitsizlikler", "2018": 1, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 3, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Mutlak De\u011fer", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 2, "2025": 1, "2026": 1}, {"Konu": "\u00dcsl\u00fc Say\u0131lar", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "K\u00f6kl\u00fc Say\u0131lar", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u00c7arpanlara Ay\u0131rma", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Oran - Orant\u0131", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "Denklem \u00c7\u00f6zme", "2018": 2, "2019": 1, "2020": 0, "2021": 2, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Problemler", "2018": 11, "2019": 12, "2020": 13, "2021": 11, "2022": 13, "2023": 10, "2024": 11, "2025": 12, "2026": 12}, {"Konu": "K\u00fcmeler", "2018": 2, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Mant\u0131k", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Fonksiyonlar", "2018": 1, "2019": 2, "2020": 2, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Polinomlar", "2018": 1, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Perm\u00fctasyon - Kombinasyon", "2018": 1, "2019": 1, "2020": 2, "2021": 0, "2022": 0, "2023": 1, "2024": 3, "2025": 1, "2026": 1}, {"Konu": "Olas\u0131l\u0131k", "2018": 2, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Veri - \u0130statistik", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}], "T\u00dcRK\u00c7E": [{"Konu": "Ses Bilgisi", "2018": 3, "2019": 1, "2020": 0, "2021": 1, "2022": 0, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Dil Bilgisi", "2018": 1, "2019": 8, "2020": 3, "2021": 2, "2022": 3, "2023": 2, "2024": 0, "2025": 3, "2026": 3}, {"Konu": "Noktalama \u0130\u015faretleri", "2018": 1, "2019": 1, "2020": 2, "2021": 2, "2022": 2, "2023": 2, "2024": 2, "2025": 2, "2026": 2}, {"Konu": "Yaz\u0131m Kurallar\u0131", "2018": 2, "2019": 2, "2020": 2, "2021": 2, "2022": 2, "2023": 2, "2024": 2, "2025": 2, "2026": 2}, {"Konu": "Anlat\u0131m Bozuklu\u011fu", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Paragraf", "2018": 22, "2019": 22, "2020": 26, "2021": 25, "2022": 26, "2023": 26, "2024": 26, "2025": 26, "2026": 27}, {"Konu": "C\u00fcmlede Anlam", "2018": 7, "2019": 3, "2020": 6, "2021": 3, "2022": 3, "2023": 4, "2024": 5, "2025": 3, "2026": 3}, {"Konu": "S\u00f6zc\u00fckte Anlam", "2018": 3, "2019": 3, "2020": 1, "2021": 5, "2022": 4, "2023": 3, "2024": 5, "2025": 4, "2026": 3}], "GEOMETR\u0130": [{"Konu": "A\u00e7\u0131lar ve \u00dc\u00e7genler", "2018": 3, "2019": 2, "2020": 2, "2021": 4, "2022": 4, "2023": 5, "2024": 5, "2025": 4, "2026": 4}, {"Konu": "\u00c7okgenler", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Yamuk", "2018": 1, "2019": 0, "2020": 2, "2021": 0, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "E\u015fkenar D\u00f6rtgen", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Deltoid", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "Kare", "2018": 1, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "Dikd\u00f6rtgen", "2018": 1, "2019": 1, "2020": 2, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u00c7ember ve Daire", "2018": 1, "2019": 2, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Analitik Geometri", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Kat\u0131 Cisimler", "2018": 2, "2019": 2, "2020": 2, "2021": 2, "2022": 2, "2023": 2, "2024": 2, "2025": 2, "2026": 2}], "F\u0130Z\u0130K": [{"Konu": "Fizik Bilimine Giri\u015f", "2018": 1, "2019": 0, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Madde Ve \u00d6zellikleri", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "S\u0131v\u0131lar\u0131n Kald\u0131rma Kuvveti", "2018": 1, "2019": 0, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Bas\u0131n\u00e7", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Is\u0131, S\u0131cakl\u0131k ve Genle\u015fme", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Hareket ve Kuvvet", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Dinamik", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u0130\u015f, G\u00fc\u00e7 ve Enerji", "2018": 0, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Elektrostatik", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Elektrik Ak\u0131m\u0131 ve Devreler", "2018": 0, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 2, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Elektriksel Enerji ve G\u00fc\u00e7", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Optik", "2018": 2, "2019": 2, "2020": 1, "2021": 1, "2022": 1, "2023": 2, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Manyetizma", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Dalgalar", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 1}], "K\u0130MYA": [{"Konu": "Kimya Bilimi", "2018": 2, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Atomun Yap\u0131s\u0131", "2018": 0, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Periyodik Tablo", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Maddenin Halleri", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Kimyasal T\u00fcrler Aras\u0131 Etkile\u015fimler", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 2}, {"Konu": "Kimyasal Hesaplamalar", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Kimyan\u0131n Temel Kanunlar\u0131", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Asit, Baz ve Tuz", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Kar\u0131\u015f\u0131mlar", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Kimya Her Yerde", "2018": 1, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}], "B\u0130YOLOJ\u0130": [{"Konu": "Canl\u0131lar\u0131n Ortak \u00d6zellikleri", "2018": 0, "2019": 1, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "Canl\u0131lar\u0131n Temel Bile\u015fenleri", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 0, "2023": 1, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "H\u00fccre ve Organelleri", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Madde Ge\u00e7i\u015fleri", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Canl\u0131lar\u0131n S\u0131n\u0131fland\u0131r\u0131lmas\u0131", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "H\u00fccre B\u00f6l\u00fcnmeleri ve \u00dcreme", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Kal\u0131t\u0131m", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Ekosistem Ekoloji", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Bitkiler Biyolojisi", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 1, "2026": 0}], "TAR\u0130H": [{"Konu": "Tarih ve Zaman", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u0130lk ve Orta \u00c7a\u011flarda T\u00fcrk D\u00fcnyas\u0131", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u0130slam Medeniyetinin Do\u011fu\u015fu", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "T\u00fcrklerin \u0130slamiyet\u2019i Kabul\u00fc ve \u0130lk T\u00fcrk \u0130slam Devletleri", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Beylikten Devlete Osmanl\u0131", "2018": 1, "2019": 1, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "D\u00fcnya G\u00fcc\u00fc Osmanl\u0131", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "De\u011fi\u015fim \u00c7a\u011f\u0131nda Avrupa ve Osmanl\u0131", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Uluslararas\u0131 \u0130li\u015fkilerde Denge Stratejisi (1774-1914)", "2018": 1, "2019": 0, "2020": 1, "2021": 1, "2022": 0, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "XX. Y\u00fczy\u0131l Ba\u015flar\u0131nda Osmanl\u0131 Devleti ve D\u00fcnya", "2018": 1, "2019": 0, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Milli M\u00fccadele", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 2, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Atat\u00fcrk\u00e7\u00fcl\u00fck ve T\u00fcrk \u0130nk\u0131lab\u0131", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 1}], "CO\u011eRAFYA": [{"Konu": "Do\u011fa ve \u0130nsan", "2018": 1, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "D\u00fcnya\u2019n\u0131n \u015eekli ve Hareketleri", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Co\u011frafi Konum", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Harita Bilgisi", "2018": 1, "2019": 0, "2020": 1, "2021": 0, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Atmosfer ve S\u0131cakl\u0131k", "2018": 0, "2019": 0, "2020": 1, "2021": 0, "2022": 0, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u0130klim Bilgisi", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "i\u00e7 ve D\u0131\u015f Kuvvetler", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "N\u00fcfus ve Yerle\u015fme", "2018": 1, "2019": 2, "2020": 1, "2021": 1, "2022": 0, "2023": 2, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "T\u00fcrkiye\u2019nin Yer \u015eekilleri", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "Ekonomik Faaliyetler", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "B\u00f6lgeler", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Uluslararas\u0131 Ula\u015f\u0131m Hatlar\u0131", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Do\u011fal Afetler", "2018": 1, "2019": 1, "2020": 0, "2021": 0, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}], "FELSEFE": [{"Konu": "Felsefenin Alan\u0131", "2018": 0, "2019": 1, "2020": 0, "2021": 2, "2022": 1, "2023": 2, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Bilgi Felsefesi", "2018": 2, "2019": 1, "2020": 1, "2021": 0, "2022": 2, "2023": 2, "2024": 1, "2025": 3, "2026": 1}, {"Konu": "Bilim Felsefesi", "2018": 0, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "Varl\u0131k Felsefesi", "2018": 1, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Ahlak Felsefesi", "2018": 1, "2019": 1, "2020": 2, "2021": 0, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Siyaset Felsefesi", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Din Felsefesi", "2018": 1, "2019": 0, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Sanat Felsefesi", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}], "D\u0130N": [{"Konu": "Bilgi ve \u0130nan\u00e7", "2018": 1, "2019": 2, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 2}, {"Konu": "\u0130badetler", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Ahlak ve De\u011ferler", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Hz. Muhammed (S.A.V)", "2018": 1, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Vahiy ve Ak\u0131l", "2018": 1, "2019": 0, "2020": 2, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u0130slam D\u00fc\u015f\u00fcncesinde Yorumlar, Mezhepler", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Din, K\u00fclt\u00fcr ve Medeniyet", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 0}]}, "AYT": {"MATEMAT\u0130K": [{"Konu": "Temel Kavramlar", "2018": 4, "2019": 2, "2020": 2, "2021": 3, "2022": 2, "2023": 4, "2024": 2, "2025": 1, "2026": 2}, {"Konu": "Say\u0131 Basamaklar\u0131", "2018": 0, "2019": 0, "2020": 3, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "B\u00f6lme ve B\u00f6l\u00fcnebilme", "2018": 0, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "EBOB - EKOK", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Rasyonel Say\u0131lar", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Basit E\u015fitsizlikler", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Mutlak De\u011fer", "2018": 0, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "\u00dcsl\u00fc Say\u0131lar", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "K\u00f6kl\u00fc Say\u0131lar", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "\u00c7arpanlara Ay\u0131rma", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "Oran Orant\u0131", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "K\u00fcmeler", "2018": 0, "2019": 1, "2020": 2, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Mant\u0131k", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Fonksiyonlar", "2018": 2, "2019": 2, "2020": 2, "2021": 2, "2022": 2, "2023": 2, "2024": 2, "2025": 2, "2026": 2}, {"Konu": "Polinomlar", "2018": 2, "2019": 2, "2020": 2, "2021": 1, "2022": 1, "2023": 2, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "2.Dereceden Denklemler", "2018": 1, "2019": 1, "2020": 3, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "E\u015fitsizlikler", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "Parabol", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 0, "2023": 1, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Perm\u00fctasyon-Kombinasyon", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Olas\u0131l\u0131k", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Binom A\u00e7\u0131l\u0131m\u0131", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Trigonometri", "2018": 3, "2019": 3, "2020": 4, "2021": 5, "2022": 4, "2023": 5, "2024": 5, "2025": 5, "2026": 5}, {"Konu": "Logaritma", "2018": 2, "2019": 3, "2020": 3, "2021": 1, "2022": 2, "2023": 3, "2024": 1, "2025": 2, "2026": 2}, {"Konu": "Diziler", "2018": 1, "2019": 1, "2020": 2, "2021": 1, "2022": 1, "2023": 2, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Limit", "2018": 2, "2019": 2, "2020": 0, "2021": 2, "2022": 2, "2023": 0, "2024": 2, "2025": 2, "2026": 2}, {"Konu": "T\u00fcrev", "2018": 4, "2019": 4, "2020": 0, "2021": 3, "2022": 4, "2023": 0, "2024": 3, "2025": 3, "2026": 3}, {"Konu": "\u0130ntegral", "2018": 4, "2019": 4, "2020": 0, "2021": 4, "2022": 4, "2023": 0, "2024": 5, "2025": 3, "2026": 3}], "GEOMETR\u0130": [{"Konu": "Do\u011fruda ve \u00dc\u00e7gende A\u00e7\u0131", "2018": 1, "2019": 0, "2020": 1, "2021": 0, "2022": 1, "2023": 3, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "\u00d6zel \u00dc\u00e7genler", "2018": 2, "2019": 0, "2020": 2, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "A\u00e7\u0131ortay - Kenarortay", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u00dc\u00e7gende Alan Benzerlik", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "A\u00e7\u0131 Kenar Ba\u011f\u0131nt\u0131lar\u0131", "2018": 0, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u00c7okgenler", "2018": 1, "2019": 2, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u00d6zel D\u00f6rtgenler", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u00c7ember ve Daire", "2018": 1, "2019": 2, "2020": 2, "2021": 3, "2022": 2, "2023": 2, "2024": 2, "2025": 2, "2026": 2}, {"Konu": "Noktan\u0131n Analiti\u011fi", "2018": 0, "2019": 0, "2020": 1, "2021": 2, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Do\u011frunun Analiti\u011fi", "2018": 2, "2019": 1, "2020": 1, "2021": 2, "2022": 1, "2023": 0, "2024": 3, "2025": 2, "2026": 2}, {"Konu": "D\u00f6n\u00fc\u015f\u00fcm Geometrisi", "2018": 1, "2019": 1, "2020": 1, "2021": 0, "2022": 1, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Kat\u0131 Cisimler", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 2, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u00c7emberin Analiti\u011fi", "2018": 1, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 1}], "F\u0130Z\u0130K": [{"Konu": "Vekt\u00f6rler", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Hareket", "2018": 0, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Newton\u2019un Hareket Yasalar\u0131", "2018": 1, "2019": 0, "2020": 1, "2021": 0, "2022": 1, "2023": 1, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "At\u0131\u015flar", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u0130\u015f, G\u00fc\u00e7 ve Enerji", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u0130tme ve Momentum", "2018": 1, "2019": 1, "2020": 1, "2021": 0, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Kuvvet, Tork ve Denge", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "K\u00fctle Merkezi", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Basit Makineler", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Elektrik Alan ve Potansiyel", "2018": 1, "2019": 1, "2020": 1, "2021": 2, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Paralel Levhalar ve S\u0131\u011fa", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "Manyetik Alan ve Manyetik Kuvvet", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u0130nd\u00fcksiyon, Alternatif Ak\u0131m ve Transformat\u00f6rler", "2018": 2, "2019": 2, "2020": 2, "2021": 1, "2022": 1, "2023": 2, "2024": 2, "2025": 1, "2026": 1}, {"Konu": "D\u00fczg\u00fcn \u00c7embersel Hareket", "2018": 1, "2019": 1, "2020": 2, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "D\u00f6nme, Yuvarlanma ve A\u00e7\u0131sal Momentum", "2018": 0, "2019": 1, "2020": 1, "2021": 0, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "K\u00fctle \u00c7ekim ve Kepler Yasalar\u0131", "2018": 1, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "Basit Harmonik Hareket", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Dalga Mekani\u011fi", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 2, "2026": 1}, {"Konu": "Atom Fizi\u011fine Giri\u015f ve Radyoaktivite", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Modern Fizik", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 2, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Modern Fizi\u011fin Teknolojideki Uygulamalar\u0131", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 1}], "K\u0130MYA": [{"Konu": "Kimya Bilimi", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Atom ve Yap\u0131s\u0131", "2018": 0, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Periyodik Sistem", "2018": 1, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Kimyasal T\u00fcrler Aras\u0131 Etkile\u015fim", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Kimyasal Hesaplamalar", "2018": 1, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Modern Atom Teorisi", "2018": 0, "2019": 0, "2020": 2, "2021": 0, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Gazlar", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 2, "2024": 1, "2025": 1, "2026": 2}, {"Konu": "S\u0131v\u0131 \u00c7\u00f6zeltiler", "2018": 1, "2019": 1, "2020": 2, "2021": 2, "2022": 2, "2023": 2, "2024": 2, "2025": 1, "2026": 1}, {"Konu": "Kimyasal Tepkimelerde Enerji", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Kimyasal Tepkimelerde H\u0131z", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Kimyasal Tepkimelerde Denge", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 2, "2024": 1, "2025": 2, "2026": 1}, {"Konu": "Asit-Baz Dengesi", "2018": 1, "2019": 2, "2020": 1, "2021": 1, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "\u00c7\u00f6z\u00fcn\u00fcrl\u00fck Dengesi", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Kimya ve Elektrik", "2018": 2, "2019": 2, "2020": 3, "2021": 2, "2022": 2, "2023": 3, "2024": 2, "2025": 2, "2026": 1}, {"Konu": "Organik Kimya", "2018": 4, "2019": 3, "2020": 1, "2021": 3, "2022": 3, "2023": 1, "2024": 3, "2025": 4, "2026": 4}], "B\u0130YOLOJ\u0130": [{"Konu": "Sinir Sistemi", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 1, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "Endokrin Sistem", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 0, "2023": 2, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Duyu Organlar\u0131", "2018": 0, "2019": 0, "2020": 1, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "Destek ve Hareket Sistemi", "2018": 1, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "Sindirim Sistemi", "2018": 0, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Dola\u015f\u0131m Sistemi", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Solunum Sistemi", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "\u00dcriner Sistem", "2018": 1, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "\u00dcreme Sistemi ve Embriyonik Geli\u015fim", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Kom\u00fcnite ve Pop\u00fclasyon Ekolojisi", "2018": 2, "2019": 0, "2020": 2, "2021": 2, "2022": 2, "2023": 2, "2024": 2, "2025": 1, "2026": 2}, {"Konu": "Genden Proteine", "2018": 3, "2019": 2, "2020": 3, "2021": 2, "2022": 2, "2023": 1, "2024": 2, "2025": 2, "2026": 2}, {"Konu": "Canl\u0131l\u0131k ve Enerji", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 1, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "Fotosentez ve Kemosentez", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "H\u00fccresel Solunum", "2018": 0, "2019": 1, "2020": 1, "2021": 1, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Bitki Biyolojisi", "2018": 2, "2019": 3, "2020": 0, "2021": 2, "2022": 2, "2023": 0, "2024": 2, "2025": 2, "2026": 2}, {"Konu": "Canl\u0131lar ve \u00c7evre", "2018": 1, "2019": 1, "2020": 0, "2021": 1, "2022": 0, "2023": 1, "2024": 0, "2025": 1, "2026": 0}], "EDEB\u0130YAT": [{"Konu": "Anlam Bilgisi", "2018": 4, "2019": 3, "2020": 6, "2021": 3, "2022": 6, "2023": 6, "2024": 6, "2025": 6, "2026": 6}, {"Konu": "Dil Bilgisi", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Metin T\u00fcrleri", "2018": 0, "2019": 2, "2020": 0, "2021": 0, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "\u015eiir Bilgisi", "2018": 2, "2019": 3, "2020": 3, "2021": 2, "2022": 2, "2023": 3, "2024": 2, "2025": 3, "2026": 2}, {"Konu": "Edebi Sanatlar", "2018": 1, "2019": 1, "2020": 1, "2021": 2, "2022": 2, "2023": 1, "2024": 2, "2025": 1, "2026": 1}, {"Konu": "\u0130slamiyet \u00d6ncesi T\u00fcrk Edebiyat\u0131 ve Ge\u00e7i\u015f D\u00f6nemi", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 2}, {"Konu": "Halk Edebiyat\u0131", "2018": 1, "2019": 1, "2020": 2, "2021": 2, "2022": 1, "2023": 2, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Divan Edebiyat\u0131", "2018": 5, "2019": 3, "2020": 4, "2021": 6, "2022": 5, "2023": 5, "2024": 4, "2025": 3, "2026": 5}, {"Konu": "Tanzimat Edebiyat\u0131", "2018": 2, "2019": 2, "2020": 1, "2021": 2, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Servet-i F\u00fcnun Ve Fecr-i Ati Edebiyat\u0131", "2018": 1, "2019": 1, "2020": 2, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Milli Edebiyat", "2018": 3, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Cumhuriyet D\u00f6nemi Edebiyat\u0131", "2018": 4, "2019": 5, "2020": 2, "2021": 3, "2022": 3, "2023": 2, "2024": 3, "2025": 2, "2026": 3}, {"Konu": "Bat\u0131 Edebiyat Ak\u0131mlar\u0131", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}], "CO\u011eRAFYA": [{"Konu": "\u0130klim ve Yer \u015eekilleri", "2018": 1, "2019": 1, "2020": 2, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Co\u011frafi Konum", "2018": 2, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "D\u00fcnya\u2019n\u0131n \u015eekli ve Hareketleri", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Harita Bilgisi", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u0130\u00e7 ve D\u0131\u015f Kuvvetler", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Ekosistem", "2018": 0, "2019": 3, "2020": 3, "2021": 3, "2022": 4, "2023": 6, "2024": 2, "2025": 3, "2026": 2}, {"Konu": "N\u00fcfus Politikalar\u0131", "2018": 1, "2019": 1, "2020": 2, "2021": 0, "2022": 0, "2023": 1, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Yerle\u015fmelerin \u00d6zellikleri", "2018": 4, "2019": 1, "2020": 0, "2021": 0, "2022": 1, "2023": 1, "2024": 2, "2025": 2, "2026": 1}, {"Konu": "Uluslararas\u0131 Ula\u015f\u0131m Hatlar\u0131", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Ekonomik Faaliyetler ve Do\u011fal Kaynaklar", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 2, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Ge\u00e7mi\u015ften Gelece\u011fe \u015eehir ve Ekonomi", "2018": 0, "2019": 1, "2020": 1, "2021": 0, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 2}, {"Konu": "T\u00fcrkiye\u2019de Ekonomi", "2018": 4, "2019": 2, "2020": 1, "2021": 3, "2022": 2, "2023": 5, "2024": 0, "2025": 3, "2026": 2}, {"Konu": "T\u00fcrkiye\u2019nin \u0130\u015flevsel B\u00f6lgeleri ve Kalk\u0131nma Projeleri", "2018": 1, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "K\u00fcresel Ticaret", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "K\u00fclt\u00fcr B\u00f6lgeleri", "2018": 0, "2019": 2, "2020": 0, "2021": 1, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 2}, {"Konu": "Uluslararas\u0131 \u00d6rg\u00fctler", "2018": 0, "2019": 2, "2020": 1, "2021": 1, "2022": 0, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "\u00dclkeler Aras\u0131 Etkile\u015fimler", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "B\u00f6lgeler ve \u00dclkeler", "2018": 1, "2019": 1, "2020": 2, "2021": 2, "2022": 4, "2023": 0, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "\u00c7evre ve Toplum", "2018": 0, "2019": 1, "2020": 3, "2021": 3, "2022": 1, "2023": 1, "2024": 4, "2025": 2, "2026": 3}], "TAR\u0130H": [{"Konu": "Tarih ve Zaman", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u0130nsanl\u0131\u011f\u0131n \u0130lk D\u00f6nemleri", "2018": 1, "2019": 1, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "\u0130lk ve Orta \u00c7a\u011flarda T\u00fcrk D\u00fcnyas\u0131", "2018": 3, "2019": 2, "2020": 2, "2021": 1, "2022": 2, "2023": 2, "2024": 2, "2025": 2, "2026": 2}, {"Konu": "\u0130slam Medeniyetinin Do\u011fu\u015fu", "2018": 1, "2019": 1, "2020": 2, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "T\u00fcrklerin \u0130slamiyet\u2019i Kabul\u00fc ve \u0130lk T\u00fcrk \u0130slam Devletleri", "2018": 1, "2019": 1, "2020": 1, "2021": 3, "2022": 1, "2023": 1, "2024": 2, "2025": 1, "2026": 1}, {"Konu": "Yerle\u015fme ve Devletle\u015fme S\u00fcrecinde Sel\u00e7uklu T\u00fcrkiyesi", "2018": 0, "2019": 1, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Beylikten Devlete Osmanl\u0131", "2018": 2, "2019": 1, "2020": 1, "2021": 0, "2022": 3, "2023": 2, "2024": 2, "2025": 2, "2026": 1}, {"Konu": "Devletle\u015fme S\u00fcrecinde Sava\u015f\u00e7\u0131lar ve Askerler", "2018": 0, "2019": 0, "2020": 1, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "D\u00fcnya G\u00fcc\u00fc Osmanl\u0131", "2018": 2, "2019": 1, "2020": 0, "2021": 1, "2022": 0, "2023": 2, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Sultan ve Osmanl\u0131 Merkez Te\u015fkilat\u0131", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "De\u011fi\u015fen D\u00fcnya Dengeleri Kar\u015f\u0131s\u0131nda Osmanl\u0131 Siyaseti", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "De\u011fi\u015fim \u00c7a\u011f\u0131nda Avrupa ve Osmanl\u0131", "2018": 0, "2019": 2, "2020": 2, "2021": 1, "2022": 0, "2023": 1, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "Uluslararas\u0131 \u0130li\u015fkilerde Denge Stratejisi (1774-1914)", "2018": 1, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 1, "2024": 2, "2025": 3, "2026": 1}, {"Konu": "Devrimler \u00c7a\u011f\u0131nda De\u011fi\u015fen Devlet-Toplum \u0130li\u015fkileri", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Sermaye ve Emek", "2018": 0, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "XX. Y\u00fczy\u0131l Ba\u015flar\u0131nda Osmanl\u0131 Devleti ve D\u00fcnya", "2018": 3, "2019": 4, "2020": 2, "2021": 1, "2022": 0, "2023": 1, "2024": 3, "2025": 1, "2026": 2}, {"Konu": "Milli M\u00fccadele", "2018": 1, "2019": 3, "2020": 4, "2021": 4, "2022": 5, "2023": 5, "2024": 3, "2025": 4, "2026": 4}, {"Konu": "Atat\u00fcrk\u00e7\u00fcl\u00fck ve T\u00fcrk \u0130nk\u0131lab\u0131", "2018": 2, "2019": 2, "2020": 2, "2021": 3, "2022": 1, "2023": 1, "2024": 2, "2025": 1, "2026": 1}, {"Konu": "\u0130ki Sava\u015f Aras\u0131ndaki D\u00f6nemde T\u00fcrkiye ve D\u00fcnya", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 1, "2024": 0, "2025": 2, "2026": 1}, {"Konu": "II. D\u00fcnya Sava\u015f\u0131 S\u00fcrecinde - Sonras\u0131nda T\u00fcrkiye ve D\u00fcnya", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 2, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "XXI. Y\u00fczy\u0131l\u0131n E\u015fi\u011finde T\u00fcrkiye ve D\u00fcnya", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}], "FELSEFE": [{"Konu": "Felsefe ve Bilim", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Bilgi Felsefesi", "2018": 1, "2019": 2, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Varl\u0131k Felsefesi", "2018": 1, "2019": 1, "2020": 2, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 2, "2026": 1}, {"Konu": "Ahlak Felsefesi", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "Sanat Felsefesi", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Din Felsefesi", "2018": 0, "2019": 0, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "20. Y\u00fczy\u0131l Felsefesi", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "Mant\u0131\u011fa Giri\u015f", "2018": 1, "2019": 1, "2020": 2, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Klasik Mant\u0131k", "2018": 2, "2019": 2, "2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 2, "2025": 0, "2026": 2}, {"Konu": "Mant\u0131k ve Dil", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "Psikoloji Bilimini Tan\u0131yal\u0131m", "2018": 0, "2019": 1, "2020": 3, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Psikolojinin Temel S\u00fcre\u00e7leri", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 2, "2026": 2}, {"Konu": "\u00d6\u011frenme Bellek D\u00fc\u015f\u00fcnme", "2018": 2, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Ruh Sa\u011fl\u0131\u011f\u0131n\u0131n Temelleri", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "Sosyolojiye Giri\u015f", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 1, "2025": 1, "2026": 0}, {"Konu": "Birey ve Toplum", "2018": 1, "2019": 1, "2020": 2, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "Toplumsal Yap\u0131", "2018": 1, "2019": 0, "2020": 1, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Toplumsal De\u011fi\u015fme ve Geli\u015fme", "2018": 1, "2019": 0, "2020": 0, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 1, "2026": 0}, {"Konu": "Toplum ve K\u00fclt\u00fcr", "2018": 0, "2019": 1, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 1}, {"Konu": "Toplumsal Kurumlar", "2018": 1, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 1, "2024": 0, "2025": 0, "2026": 0}], "D\u0130N": [{"Konu": "\u0130slam\u2019da \u0130badet", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "Allah, \u0130nsan \u0130li\u015fkisi", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "D\u00fcnya ve Ahiret", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "Kur\u2019an\u2019a G\u00f6re Hz. Muhammed", "2018": 2, "2019": 1, "2020": 1, "2021": 0, "2022": 0, "2023": 1, "2024": 2, "2025": 1, "2026": 0}, {"Konu": "Kur\u2019an\u2019da Baz\u0131 Kavramlar", "2018": 3, "2019": 1, "2020": 2, "2021": 2, "2022": 1, "2023": 1, "2024": 0, "2025": 1, "2026": 1}, {"Konu": "\u0130nan\u00e7la \u0130lgili Meseleler", "2018": 0, "2019": 0, "2020": 1, "2021": 1, "2022": 1, "2023": 0, "2024": 1, "2025": 0, "2026": 0}, {"Konu": "Yahudilik ve Hristiyanl\u0131k", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 1, "2023": 0, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u0130slam ve Bilim", "2018": 0, "2019": 1, "2020": 2, "2021": 1, "2022": 3, "2023": 1, "2024": 1, "2025": 1, "2026": 1}, {"Konu": "Anadolu\u2019da \u0130slam", "2018": 0, "2019": 0, "2020": 0, "2021": 1, "2022": 0, "2023": 2, "2024": 0, "2025": 0, "2026": 0}, {"Konu": "\u0130slam D\u00fc\u015f\u00fcncesinde Tasavvufi Yorumlar ve Mezhepler", "2018": 0, "2019": 2, "2020": 0, "2021": 1, "2022": 0, "2023": 0, "2024": 1, "2025": 2, "2026": 0}, {"Konu": "G\u00fcncel Dini Meseleler", "2018": 0, "2019": 0, "2020": 0, "2021": 0, "2022": 0, "2023": 1, "2024": 0, "2025": 0, "2026": 1}, {"Konu": "Hint ve \u00c7in Dinleri", "2018": 1, "2019": 1, "2020": 0, "2021": 0, "2022": 0, "2023": 0, "2024": 0, "2025": 0, "2026": 1}]}};
+        
+        let currentTab = 'analiz';
+        let currentChart = null;
+
+        const examSelect = document.getElementById('examSelect');
+        const subjectSelect = document.getElementById('subjectSelect');
+        const topicSelect = document.getElementById('topicSelect');
+        const topicContainer = document.getElementById('topicContainer');
+        const startYearSelect = document.getElementById('startYear');
+        const endYearSelect = document.getElementById('endYear');
+        const chartTypeSelect = document.getElementById('chartType');
+        
+        const analizContent = document.getElementById('analizContent');
+        const tabloContent = document.getElementById('tabloContent');
+        const tabAnaliz = document.getElementById('tab-analiz');
+        const tabTablo = document.getElementById('tab-tablo');
+
+        const allYears = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+
+        function init() {
+            onExamChange();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            if (tab === 'analiz') {
+                analizContent.classList.remove('hidden');
+                tabloContent.classList.add('hidden');
+                tabAnaliz.classList.add('active');
+                tabTablo.classList.remove('active');
+                topicContainer.style.display = 'block';
+                renderChartAndCards();
+            } else {
+                analizContent.classList.add('hidden');
+                tabloContent.classList.remove('hidden');
+                tabAnaliz.classList.remove('active');
+                tabTablo.classList.add('active');
+                topicContainer.style.display = 'none';
+                renderTable();
+            }
+        }
+
+        function onExamChange() {
+            const exam = examSelect.value;
+            const subjects = Object.keys(DB[exam] || {});
+            
+            subjectSelect.innerHTML = '';
+            subjects.forEach(sub => {
+                const opt = document.createElement('option');
+                opt.value = sub;
+                opt.textContent = sub;
+                subjectSelect.appendChild(opt);
+            });
+            
+            onSubjectChange();
+        }
+
+        function onSubjectChange() {
+            const exam = examSelect.value;
+            const subject = subjectSelect.value;
+            const topics = DB[exam][subject] || [];
+            
+            topicSelect.innerHTML = '';
+            topics.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.Konu;
+                opt.textContent = t.Konu;
+                topicSelect.appendChild(opt);
+            });
+            
+            if (currentTab === 'analiz') {
+                renderChartAndCards();
+            } else {
+                renderTable();
+            }
+        }
+
+        function onTopicChange() {
+            if (currentTab === 'analiz') {
+                renderChartAndCards();
+            }
+        }
+
+        function getFilteredYears() {
+            let start = parseInt(startYearSelect.value);
+            let end = parseInt(endYearSelect.value);
+            if (start > end) {
+                // Swap if user selected start > end
+                let temp = start; start = end; end = temp;
+                startYearSelect.value = start; endYearSelect.value = end;
+            }
+            return allYears.filter(y => y >= start && y <= end);
+        }
+
+        function renderChartAndCards() {
+            const exam = examSelect.value;
+            const subject = subjectSelect.value;
+            const topicName = topicSelect.value;
+            
+            if (!subject || !topicName) return;
+
+            const topicData = DB[exam][subject].find(t => t.Konu === topicName);
+            if (!topicData) return;
+
+            const filteredYears = getFilteredYears();
+            const dataCounts = filteredYears.map(y => topicData[y] || 0);
+            const cType = chartTypeSelect.value;
+            
+            const total = dataCounts.reduce((a, b) => a + b, 0);
+            const avg = filteredYears.length > 0 ? (total / filteredYears.length).toFixed(1) : 0;
+            const maxVal = Math.max(...dataCounts);
+            
+            let maxYears = [];
+            if (maxVal > 0) {
+                filteredYears.forEach((y, i) => { if (dataCounts[i] === maxVal) maxYears.push(y); });
+            }
+            
+            document.getElementById('totalQuestions').textContent = total;
+            document.getElementById('avgQuestions').textContent = avg;
+            document.getElementById('maxYear').textContent = maxVal > 0 ? `${maxVal} Soru (${maxYears.join(', ')})` : '-';
+            
+            document.getElementById('chartTitle').textContent = `${exam} - ${topicName}`;
+
+            const ctx = document.getElementById('topicChart').getContext('2d');
+            if (currentChart) currentChart.destroy();
+            
+            const bgColors = cType === 'pie' 
+                ? ['#4f46e5', '#9333ea', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#64748b']
+                : 'rgba(79, 70, 229, 0.7)';
+            
+            const borderColors = cType === 'pie' ? '#fff' : 'rgba(79, 70, 229, 1)';
+
+            currentChart = new Chart(ctx, {
+                type: cType,
+                data: {
+                    labels: filteredYears.map(String),
+                    datasets: [{
+                        label: 'Soru Sayısı',
+                        data: dataCounts,
+                        backgroundColor: bgColors,
+                        borderColor: borderColors,
+                        borderWidth: cType === 'pie' ? 2 : 1,
+                        borderRadius: cType === 'bar' ? 6 : 0,
+                        fill: cType === 'line' ? true : false,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: cType !== 'pie' ? {
+                        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b' }, grid: { color: '#f1f5f9' } },
+                        x: { ticks: { color: '#64748b' }, grid: { display: false } }
+                    } : {},
+                    plugins: {
+                        legend: { display: cType === 'pie', position: 'bottom' },
+                        tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: 12, borderRadius: 8 }
+                    }
+                }
+            });
+        }
+
+        function renderTable() {
+            const exam = examSelect.value;
+            const subject = subjectSelect.value;
+            const topics = DB[exam][subject] || [];
+            
+            document.getElementById('tableTitle').textContent = `${exam} - ${subject} Tablosu`;
+            
+            const thead = document.getElementById('tableHeadRow');
+            const tbody = document.getElementById('tableBody');
+            
+            const years = [...allYears].reverse(); // 2026 -> 2018
+            
+            // Build Head
+            thead.innerHTML = `<th class="p-4 border-b sticky-col text-slate-700">Konular</th>`;
+            years.forEach(y => {
+                thead.innerHTML += `<th class="p-4 border-b text-center">${y}</th>`;
+            });
+            thead.innerHTML += `<th class="p-4 border-b text-center bg-indigo-50 text-indigo-700 rounded-tr-xl">Toplam</th>`;
+
+            // Build Body
+            tbody.innerHTML = '';
+            topics.forEach((t, index) => {
+                let tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors group';
+                
+                let tdKonu = document.createElement('td');
+                tdKonu.className = 'p-4 border-b sticky-col font-medium text-slate-700 group-hover:bg-slate-50 transition-colors';
+                tdKonu.textContent = t.Konu;
+                tr.appendChild(tdKonu);
+                
+                let rowTotal = 0;
+                years.forEach(y => {
+                    let td = document.createElement('td');
+                    let val = t[y] || 0;
+                    rowTotal += val;
+                    td.className = 'p-4 text-center border-b ' + (val > 0 ? 'text-indigo-600 font-bold' : 'text-slate-300');
+                    td.textContent = val > 0 ? val : '-';
+                    tr.appendChild(td);
+                });
+                
+                let tdTotal = document.createElement('td');
+                tdTotal.className = 'p-4 text-center font-bold bg-indigo-50/50 text-indigo-800 border-b group-hover:bg-indigo-50 transition-colors';
+                tdTotal.textContent = rowTotal;
+                tr.appendChild(tdTotal);
+                
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function downloadCSV() {
+            const exam = examSelect.value;
+            const subject = subjectSelect.value;
+            const topics = DB[exam][subject] || [];
+            
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+            const years = [...allYears].reverse();
+            csvContent += "Konu," + years.join(",") + ",Toplam\n";
+            
+            topics.forEach(t => {
+                let row = `"${t.Konu}"`;
+                let total = 0;
+                years.forEach(y => {
+                    let v = t[y] || 0;
+                    total += v;
+                    row += `,${v}`;
+                });
+                row += `,${total}`;
+                csvContent += row + "\n";
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `${exam}_${subject}_Soru_Dagilimi.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadPDF() {
+            // PDF içine girmesini istemediğimiz filtre/butonları gizlemek için
+            const ignoreElements = document.querySelectorAll('.data-ignore-pdf');
+            ignoreElements.forEach(el => el.style.display = 'none');
+
+            const element = document.getElementById('analizContent');
+            const exam = examSelect.value;
+            const subject = subjectSelect.value;
+            
+            const opt = {
+                margin:       0.5,
+                filename:     `${exam}_${subject}_Analiz_Raporu.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                // İşlem bitince elementleri geri göster
+                ignoreElements.forEach(el => el.style.display = '');
+            });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
